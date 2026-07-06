@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太鼓の達人 連打計算ツール</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 500px;
+            margin: 30px auto;
+            padding: 0 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        h1 {
+            font-size: 1.4rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .radio-group label {
+            display: inline;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff4500;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #e03e00;
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* 結果表示エリアの新しいスタイル */
+        #result-container {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-bottom: 2px solid #ff4500;
+            padding-bottom: 5px;
+            margin-bottom: 12px;
+            color: #222;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px dashed #dee2e6;
+        }
+        .result-row:last-child {
+            border-bottom: none;
+        }
+        .result-label {
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+            margin-right: 10px;
+        }
+        .result-value {
+            text-align: right;
+            font-family: monospace;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #111;
+        }
+        .result-sub-value {
+            display: block;
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: normal;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>連打計算ツール</h1>
+
+    <div class="form-group">
+        <label>計算モード</label>
+        <div class="radio-group">
+            <label><input type="radio" id="mode1" name="calcMode" value="1" checked onchange="switchMode()"> 1: 秒数指定</label>
+            <label><input type="radio" id="mode2" name="calcMode" value="2" onchange="switchMode()"> 2: 48分指定</label>
+        </div>
+    </div>
+
+    <div id="input-mode1">
+        <div class="form-group">
+            <label for="seconds">秒数</label>
+            <input type="number" id="seconds" step="0.001" placeholder="例: 2.500">
+        </div>
+    </div>
+
+    <div id="input-mode2" class="hidden">
+        <div class="form-group">
+            <label for="bpm">BPM</label>
+            <input type="number" id="bpm" step="0.1" placeholder="例: 170">
+        </div>
+        <div class="form-group">
+            <label for="ticks">48分表記で何拍か</label>
+            <input type="number" id="ticks" placeholder="例: 12">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="actual">実際に入れれた連打数（任意）</label>
+        <input type="number" id="actual" placeholder="例: 30">
+    </div>
+
+    <button onclick="calculate()">計算する</button>
+
+    <div id="result-container" class="hidden"></div>
+</div>
+
+<script>
+    // モード切り替え処理
+    function switchMode() {
+        const mode = document.querySelector('input[name="calcMode"]:checked').value;
+        if (mode === "1") {
+            document.getElementById('input-mode1').classList.remove('hidden');
+            document.getElementById('input-mode2').classList.add('hidden');
+        } else {
+            document.getElementById('input-mode1').classList.add('hidden');
+            document.getElementById('input-mode2').classList.remove('hidden');
+        }
+    }
+
+    // 計算処理
+    function calculate() {
+        const mode = document.querySelector('input[name="calcMode"]:checked').value;
+        let length = 0;
+
+        if (mode === "1") {
+            const secInput = document.getElementById('seconds').value;
+            if (!secInput) {
+                alert("秒数を入力してください。");
+                return;
+            }
+            length = parseFloat(secInput);
+        } else {
+            const bpmInput = document.getElementById('bpm').value;
+            const ticksInput = document.getElementById('ticks').value;
+            if (!bpmInput || !ticksInput) {
+                alert("BPMと拍数を入力してください。");
+                return;
+            }
+            const bpm = parseFloat(bpmInput);
+            const ticks = parseFloat(ticksInput);
+            length = (ticks * 5) / bpm;
+        }
+
+        // 連打秒数の辻褄を合わせるために計算上0.001秒(1ミリ秒)足す
+        length = length + 0.001;
+
+        const onetwozeroFPS = length * 120;
+        const sixzeroFPS = length * 60;
+        const frRen = Math.floor(onetwozeroFPS / 2) + 1;
+        const x = Math.floor(sixzeroFPS);
+        const y = sixzeroFPS - x;
+
+        // 実際の連打数の取得
+        const actualInput = document.getElementById('actual').value;
+        const hasActual = actualInput !== "";
+        const actual = hasActual ? parseInt(actualInput, 10) : 0;
+
+        // 表示用データの構築
+        let theoryRenText = "";
+        let theorySpeedText = "";
+
+        if (y >= 0.5) {
+            theoryRenText = `${frRen} 打`;
+            theorySpeedText = `${(frRen / length).toFixed(2)} 打/秒`;
+        } else {
+            const scRen = Math.floor(onetwozeroFPS / 2);
+            theoryRenText = `${frRen} or ${scRen} 打`;
+            theorySpeedText = `${(frRen / length).toFixed(2)} or ${(scRen / length).toFixed(2)} 打/秒`;
+        }
+
+        // 実際の連打数が入力されている場合のHTML生成
+        let actualHtml = "";
+        if (hasActual) {
+            const actualSpeed = (actual / length).toFixed(2);
+            actualHtml = `
+                <div class="result-row">
+                    <span class="result-label">実際の連打数</span>
+                    <span class="result-value">
+                        ${actual} 打
+                        <span class="result-sub-value">秒速: ${actualSpeed} 打/秒</span>
+                    </span>
+                </div>
+            `;
+        }
+
+        // 結果を構造化して出力
+        const resultContainer = document.getElementById('result-container');
+        resultContainer.innerHTML = `
+            <div class="result-title">計算結果</div>
+            <div class="result-row">
+                <span class="result-label">秒数</span>
+                <span class="result-value">${length.toFixed(3)} 秒</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">連打理論値</span>
+                <span class="result-value">
+                    ${theoryRenText}
+                    <span class="result-sub-value">秒速: ${theorySpeedText}</span>
+                </span>
+            </div>
+            ${actualHtml}
+            <div class="result-row">
+                <span class="result-label">120fps フレーム数</span>
+                <span class="result-value">${onetwozeroFPS.toFixed(3)} f</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">60fps フレーム数</span>
+                <span class="result-value">${sixzeroFPS.toFixed(3)} f</span>
+            </div>
+        `;
+        
+        resultContainer.classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
