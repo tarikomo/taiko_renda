@@ -7,9 +7,9 @@
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            max-width: 500px;
-            margin: 30px auto;
-            padding: 0 20px;
+            max-width: 1100px; /* 横幅をさらに広く使い、ギリギリまで活かす */
+            margin: 20px auto;
+            padding: 0 15px;  /* 左右の余白を少し詰めてタイトに */
             background-color: #f5f5f5;
             color: #333;
         }
@@ -24,6 +24,29 @@
             border-radius: 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        
+        /* レイアウト全体の構造 */
+        .app-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* 画面幅が768px以上（PCなど）の場合に横並びにする */
+        @media (min-width: 768px) {
+            .app-layout {
+                flex-direction: row;
+                align-items: flex-start;
+            }
+            .input-side {
+                flex: 1;
+            }
+            .result-side {
+                flex: 1;
+                margin-top: 28px; /* 入力側のラベル位置と高さを揃える調整 */
+            }
+        }
+
         .form-group {
             margin-bottom: 15px;
         }
@@ -51,7 +74,7 @@
             font-weight: normal;
             cursor: pointer;
         }
-        button {
+        .calc-btn {
             width: 100%;
             padding: 12px;
             background-color: #ff4500;
@@ -63,20 +86,38 @@
             cursor: pointer;
             margin-bottom: 10px;
         }
-        button:hover {
+        .calc-btn:hover {
             background-color: #e03e00;
         }
         .hidden {
             display: none;
         }
+        
+        /* スマホでは最初は結果枠を非表示、PCでは最初から枠だけ見せる制御 */
+        .hidden-mobile {
+            display: none;
+        }
+        @media (min-width: 768px) {
+            .hidden-mobile {
+                display: block;
+            }
+        }
 
         /* 結果表示エリアのスタイル */
         #result-container {
-            margin-top: 25px;
             padding: 15px;
             background-color: #f8f9fa;
             border-radius: 0;
             border: 1px solid #dee2e6;
+            min-height: 245px;
+            box-sizing: border-box;
+        }
+        .result-placeholder {
+            color: #777;
+            text-align: center;
+            padding: 70px 10px;
+            font-size: 0.9rem;
+            line-height: 1.6;
         }
         .result-title {
             font-size: 1.1rem;
@@ -118,22 +159,59 @@
             margin-top: 2px;
         }
 
-        /* 共有ボタン専用のスタイル */
-        .share-btn {
+        /* 共有・コピーボタン共通のスタイル */
+        .share-btn, .bookmark-btn {
             width: 100%;
             padding: 10px;
-            background-color: #6c757d;
             color: white;
             border: none;
             border-radius: 0;
             font-size: 0.9rem;
             font-weight: bold;
             cursor: pointer;
-            margin-top: 15px;
             transition: background-color 0.2s;
+        }
+        .share-btn {
+            background-color: #6c757d;
+            margin-top: 15px;
         }
         .share-btn:hover {
             background-color: #5a6268;
+        }
+        .bookmark-btn {
+            background-color: #007bff;
+            margin-top: 5px;
+            max-width: 300px; /* ボタンが広がりすぎないように制限 */
+        }
+        .bookmark-btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* ブックマーク案内セクションのスタイル */
+        .bookmark-section {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+        }
+        .bookmark-section h3 {
+            margin-top: 0;
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .bookmark-section p {
+            font-size: 0.85rem;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+        ol {
+            margin: 0 0 15px 0;
+            padding-left: 20px;
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.6;
         }
     </style>
 </head>
@@ -142,40 +220,61 @@
 <div class="card">
     <h1>連打計算ツール</h1>
 
-    <div class="form-group">
-        <label>計算モード</label>
-        <div class="radio-group">
-            <label><input type="radio" id="mode1" name="calcMode" value="1" checked onchange="switchMode()"> 1: 秒数指定</label>
-            <label><input type="radio" id="mode2" name="calcMode" value="2" onchange="shiftMode()"> 2: 48分指定</label>
+    <div class="app-layout">
+        <div class="input-side">
+            <div class="form-group">
+                <label>計算モード</label>
+                <div class="radio-group">
+                    <label><input type="radio" id="mode1" name="calcMode" value="1" checked onchange="switchMode()"> 1: 秒数指定</label>
+                    <label><input type="radio" id="mode2" name="calcMode" value="2" onchange="shiftMode()"> 2: 48分指定</label>
+                </div>
+            </div>
+
+            <div id="input-mode1">
+                <div class="form-group">
+                    <label for="seconds">秒数</label>
+                    <input type="number" id="seconds" step="0.001" placeholder="例: 2.500">
+                </div>
+            </div>
+
+            <div id="input-mode2" class="hidden">
+                <div class="form-group">
+                    <label for="bpm">BPM</label>
+                    <input type="number" id="bpm" step="0.1" placeholder="例: 170">
+                </div>
+                <div class="form-group">
+                    <label for="ticks">48分表記で何拍か</label>
+                    <input type="number" id="ticks" placeholder="例: 12">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="actual">実際に入れれた連打数（任意）</label>
+                <input type="number" id="actual" placeholder="例: 30">
+            </div>
+
+            <button class="calc-btn" onclick="calculate()">計算する</button>
+        </div>
+
+        <div class="result-side">
+            <div id="result-container" class="hidden-mobile">
+                <div class="result-placeholder">
+                    数値を入力して「計算する」ボタンを押すと、<br>ここに結果が表示されます。
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="input-mode1">
-        <div class="form-group">
-            <label for="seconds">秒数</label>
-            <input type="number" id="seconds" step="0.001" placeholder="例: 2.500">
-        </div>
+    <div class="bookmark-section">
+        <h3>便利な機能：ダイレクト接続ブックマーク</h3>
+        <p>ブラウザのブックマーク機能を使うことで、どこからでも数値を入力して一発でこの計算結果ページを開けるようになります。</p>
+        <ol>
+            <li>ブラウザで適当なページ（このページでもOK）を一度ブックマークに登録します。</li>
+            <li>登録したブックマークの「編集」を開き、URL欄の中身をすべて消去します。</li>
+            <li>下のボタンを押してコードをコピーし、URL欄に貼り付けて保存すれば完了です！</li>
+        </ol>
+        <button id="bookmark-copy-btn" class="bookmark-btn" onclick="copyBookmarklet()">ブックマーク用コードをコピー</button>
     </div>
-
-    <div id="input-mode2" class="hidden">
-        <div class="form-group">
-            <label for="bpm">BPM</label>
-            <input type="number" id="bpm" step="0.1" placeholder="例: 170">
-        </div>
-        <div class="form-group">
-            <label for="ticks">48分表記で何拍か</label>
-            <input type="number" id="ticks" placeholder="例: 12">
-        </div>
-    </div>
-
-    <div class="form-group">
-        <label for="actual">実際に入れれた連打数（任意）</label>
-        <input type="number" id="actual" placeholder="例: 30">
-    </div>
-
-    <button onclick="calculate()">計算する</button>
-
-    <div id="result-container" class="hidden"></div>
 </div>
 
 <script>
@@ -309,7 +408,7 @@
             <button id="copy-btn" class="share-btn" onclick="copyShareUrl()">この結果のURLをコピー</button>
         `;
         
-        resultContainer.classList.remove('hidden');
+        resultContainer.classList.remove('hidden-mobile');
     }
 
     // 現在の入力内容に基づいたURLを生成してコピーする処理
@@ -331,22 +430,39 @@
             if (actual) param += "-" + actual;
         }
 
-        // パラメータ付きの完全なURLを構築
         const shareUrl = baseUrl + "?" + param;
 
-        // クリップボードにコピー
         navigator.clipboard.writeText(shareUrl).then(() => {
             const copyBtn = document.getElementById('copy-btn');
             copyBtn.textContent = "コピーしました！";
-            copyBtn.style.backgroundColor = "#28a745"; // 成功時は一時的に緑色に
+            copyBtn.style.backgroundColor = "#28a745";
             
-            // 2秒後に元の状態に戻す
             setTimeout(() => {
                 copyBtn.textContent = "この結果のURLをコピー";
                 copyBtn.style.backgroundColor = "#6c757d";
             }, 2000);
         }).catch(err => {
-            alert("コピーに失敗しました。お手数ですがURLを手動でコピーしてください。");
+            alert("コピーに失敗しました。URLを手動でコピーしてください。");
+        });
+    }
+
+    // ブックマークレット用コードをコピーする処理
+    function copyBookmarklet() {
+        const u = window.location.origin + window.location.pathname;
+        // 動的に現在のドメインを組み込んだコードを生成
+        const code = `javascript:(function(){const u="${u}";const m=prompt("モードを選択してください\\n1: 秒数指定\\n2: 48分指定");if(m!=="1"&&m!=="2")return;let p=m;if(m==="1"){const s=prompt("秒数を入力してください");if(!s)return;p+="-"+s;const a=prompt("実際の連打数を入力してください（任意・空欄可）");if(a)p+="-"+a;}else{const b=prompt("BPMを入力してください");if(!b)return;const t=prompt("48分表記で何拍か入力してください");if(!t)return;p+="-"+b+"-"+t;const a=prompt("実際の連打数を入力してください（任意・空欄可）");if(a)p+="-"+a;}window.location.href=u+"?"+p;})();`;
+
+        navigator.clipboard.writeText(code).then(() => {
+            const btn = document.getElementById('bookmark-copy-btn');
+            btn.textContent = "コピーしました！";
+            btn.style.backgroundColor = "#28a745";
+            
+            setTimeout(() => {
+                btn.textContent = "ブックマーク用コードをコピー";
+                btn.style.backgroundColor = "#007bff";
+            }, 2000);
+        }).catch(err => {
+            alert("コピーに失敗しました。");
         });
     }
 </script>
