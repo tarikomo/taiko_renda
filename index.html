@@ -21,7 +21,7 @@
         .card {
             background: #fff;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .form-group {
@@ -38,7 +38,7 @@
             padding: 10px;
             box-sizing: border-box;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 0;
             font-size: 1rem;
         }
         .radio-group {
@@ -57,7 +57,7 @@
             background-color: #ff4500;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 0;
             font-size: 1rem;
             font-weight: bold;
             cursor: pointer;
@@ -70,12 +70,12 @@
             display: none;
         }
 
-        /* 結果表示エリアの新しいスタイル */
+        /* 結果表示エリアのスタイル */
         #result-container {
             margin-top: 25px;
             padding: 15px;
             background-color: #f8f9fa;
-            border-radius: 6px;
+            border-radius: 0;
             border: 1px solid #dee2e6;
         }
         .result-title {
@@ -117,6 +117,24 @@
             font-weight: normal;
             margin-top: 2px;
         }
+
+        /* 共有ボタン専用のスタイル */
+        .share-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 0;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.2s;
+        }
+        .share-btn:hover {
+            background-color: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -128,7 +146,7 @@
         <label>計算モード</label>
         <div class="radio-group">
             <label><input type="radio" id="mode1" name="calcMode" value="1" checked onchange="switchMode()"> 1: 秒数指定</label>
-            <label><input type="radio" id="mode2" name="calcMode" value="2" onchange="switchMode()"> 2: 48分指定</label>
+            <label><input type="radio" id="mode2" name="calcMode" value="2" onchange="shiftMode()"> 2: 48分指定</label>
         </div>
     </div>
 
@@ -163,15 +181,45 @@
 <script>
     // モード切り替え処理
     function switchMode() {
-        const mode = document.querySelector('input[name="calcMode"]:checked').value;
+        document.getElementById('input-mode1').classList.remove('hidden');
+        document.getElementById('input-mode2').classList.add('hidden');
+    }
+    function shiftMode() {
+        document.getElementById('input-mode1').classList.add('hidden');
+        document.getElementById('input-mode2').classList.remove('hidden');
+    }
+
+    // URLのパラメータを解析して実行する処理
+    function parseUrlParams() {
+        let paramStr = window.location.search.substring(1) || window.location.hash.substring(1);
+        if (!paramStr) return;
+
+        const params = paramStr.split('-');
+        if (params.length < 2) return;
+
+        const mode = params[0];
+
         if (mode === "1") {
-            document.getElementById('input-mode1').classList.remove('hidden');
-            document.getElementById('input-mode2').classList.add('hidden');
-        } else {
-            document.getElementById('input-mode1').classList.add('hidden');
-            document.getElementById('input-mode2').classList.remove('hidden');
+            document.getElementById('mode1').checked = true;
+            switchMode();
+            document.getElementById('seconds').value = params[1];
+            if (params[2] !== undefined) {
+                document.getElementById('actual').value = params[2];
+            }
+            calculate();
+        } else if (mode === "2") {
+            document.getElementById('mode2').checked = true;
+            shiftMode();
+            document.getElementById('bpm').value = params[1];
+            document.getElementById('ticks').value = params[2];
+            if (params[3] !== undefined) {
+                document.getElementById('actual').value = params[3];
+            }
+            calculate();
         }
     }
+
+    window.addEventListener('DOMContentLoaded', parseUrlParams);
 
     // 計算処理
     function calculate() {
@@ -197,7 +245,6 @@
             length = (ticks * 5) / bpm;
         }
 
-        // 連打秒数の辻褄を合わせるために計算上0.001秒(1ミリ秒)足す
         length = length + 0.001;
 
         const onetwozeroFPS = length * 120;
@@ -206,12 +253,10 @@
         const x = Math.floor(sixzeroFPS);
         const y = sixzeroFPS - x;
 
-        // 実際の連打数の取得
         const actualInput = document.getElementById('actual').value;
         const hasActual = actualInput !== "";
         const actual = hasActual ? parseInt(actualInput, 10) : 0;
 
-        // 表示用データの構築
         let theoryRenText = "";
         let theorySpeedText = "";
 
@@ -224,7 +269,6 @@
             theorySpeedText = `${(frRen / length).toFixed(2)} or ${(scRen / length).toFixed(2)} 打/秒`;
         }
 
-        // 実際の連打数が入力されている場合のHTML生成
         let actualHtml = "";
         if (hasActual) {
             const actualSpeed = (actual / length).toFixed(2);
@@ -239,7 +283,6 @@
             `;
         }
 
-        // 結果を構造化して出力
         const resultContainer = document.getElementById('result-container');
         resultContainer.innerHTML = `
             <div class="result-title">計算結果</div>
@@ -263,9 +306,48 @@
                 <span class="result-label">60fps フレーム数</span>
                 <span class="result-value">${sixzeroFPS.toFixed(3)} f</span>
             </div>
+            <button id="copy-btn" class="share-btn" onclick="copyShareUrl()">この結果のURLをコピー</button>
         `;
         
         resultContainer.classList.remove('hidden');
+    }
+
+    // 現在の入力内容に基づいたURLを生成してコピーする処理
+    function copyShareUrl() {
+        const mode = document.querySelector('input[name="calcMode"]:checked').value;
+        const baseUrl = window.location.origin + window.location.pathname;
+        let param = "";
+
+        if (mode === "1") {
+            const seconds = document.getElementById('seconds').value;
+            const actual = document.getElementById('actual').value;
+            param = "1-" + seconds;
+            if (actual) param += "-" + actual;
+        } else {
+            const bpm = document.getElementById('bpm').value;
+            const ticks = document.getElementById('ticks').value;
+            const actual = document.getElementById('actual').value;
+            param = "2-" + bpm + "-" + ticks;
+            if (actual) param += "-" + actual;
+        }
+
+        // パラメータ付きの完全なURLを構築
+        const shareUrl = baseUrl + "?" + param;
+
+        // クリップボードにコピー
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            const copyBtn = document.getElementById('copy-btn');
+            copyBtn.textContent = "コピーしました！";
+            copyBtn.style.backgroundColor = "#28a745"; // 成功時は一時的に緑色に
+            
+            // 2秒後に元の状態に戻す
+            setTimeout(() => {
+                copyBtn.textContent = "この結果のURLをコピー";
+                copyBtn.style.backgroundColor = "#6c757d";
+            }, 2000);
+        }).catch(err => {
+            alert("コピーに失敗しました。お手数ですがURLを手動でコピーしてください。");
+        });
     }
 </script>
 </body>
