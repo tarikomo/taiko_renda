@@ -109,13 +109,13 @@
             background-color: #f8f9fa;
             border-radius: 0;
             border: 1px solid #dee2e6;
-            min-height: 245px;
+            min-height: 285px; /* 行が増えたため高さを少し拡張 */
             box-sizing: border-box;
         }
         .result-placeholder {
             color: #777;
             text-align: center;
-            padding: 70px 10px;
+            padding: 90px 10px;
             font-size: 0.9rem;
             line-height: 1.6;
         }
@@ -344,6 +344,10 @@
             length = (ticks * 5) / bpm;
         }
 
+        // 0.001を足す前の元の秒数を保持
+        const originalLength = length;
+
+        // 連打秒数の辻褄を合わせるために計算上0.001秒(1ミリ秒)足す
         length = length + 0.001;
 
         const onetwozeroFPS = length * 120;
@@ -387,6 +391,10 @@
             <div class="result-title">計算結果</div>
             <div class="result-row">
                 <span class="result-label">秒数</span>
+                <span class="result-value">${originalLength.toFixed(3)} 秒</span>
+            </div>
+            <div class="result-row">
+                <span class="result-label">判定可能秒数</span>
                 <span class="result-value">${length.toFixed(3)} 秒</span>
             </div>
             <div class="result-row">
@@ -449,7 +457,6 @@
     // ブックマークレット用コードをコピーする処理
     function copyBookmarklet() {
         const u = window.location.origin + window.location.pathname;
-        // 動的に現在のドメインを組み込んだコードを生成
         const code = `javascript:(function(){const u="${u}";const m=prompt("モードを選択してください\\n1: 秒数指定\\n2: 48分指定");if(m!=="1"&&m!=="2")return;let p=m;if(m==="1"){const s=prompt("秒数を入力してください");if(!s)return;p+="-"+s;const a=prompt("実際の連打数を入力してください（任意・空欄可）");if(a)p+="-"+a;}else{const b=prompt("BPMを入力してください");if(!b)return;const t=prompt("48分表記で何拍か入力してください");if(!t)return;p+="-"+b+"-"+t;const a=prompt("実際の連打数を入力してください（任意・空欄可）");if(a)p+="-"+a;}window.location.href=u+"?"+p;})();`;
 
         navigator.clipboard.writeText(code).then(() => {
